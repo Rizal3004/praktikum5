@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:sqlite/edit_form.dart';
+import 'package:sqlite/tambah_saham.dart';
+import 'package:sqlite/update_saham.dart';
 import 'sqlite_service.dart';
-import 'package:sqlite/models/user.dart';
+import 'package:sqlite/models/saham.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,16 +15,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Saham',
       theme: ThemeData(
-
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Saham'),
     );
   }
 }
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -40,41 +41,60 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
 
-    this.handler = DatabaseHandler();
-    this.handler.initializeDB().whenComplete(() async {
-      await this.addUsers();
+    handler = DatabaseHandler();
+    handler.initializeDB().whenComplete(() async {
+      await addSaham();
       setState(() {});
     });
   }
 
-  Future<int> addUsers() async {
-    User firstUser  = User(name: "peter", age: 24, country: "Lebanon");
-    User secondUser = User(name: "john", age: 31, country: "United Kingdom");
-    User thirdUser = User(name: "mark", age: 28, country: "Canada");
+  Future<int> addSaham() async {
+    List<Saham> listOfUsers = [
+      Saham(ticker: "TLKM", open: 3380, high: 3500, last: 3490, change: "2,05"),
+      Saham(ticker: "AMMN", open: 6750, high: 6750, last: 6500, change: "-3,7"),
+      Saham(ticker: "BREN", open: 4500, high: 4610, last: 4580, change: "1,78"),
+      Saham(ticker: "CUAN", open: 5200, high: 5525, last: 5400, change: "3,85"),
+    ];
 
-    List<User> listOfUsers = [firstUser, secondUser, thirdUser];
-
-    return await this.handler.insertUser(listOfUsers);
+    return await handler.insertSaham(listOfUsers);
   }
 
-  void editData(User userEdit) {
+  void loadUlang() {
+    print('tes');
+    setState(() {});
+  }
+
+  bool cekChange(String change) {
+    change = change.replaceAll(",", ".");
+    double changeDouble = double.parse(change);
+
+    if (changeDouble > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void editData(Saham sahamEdit) {
     Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) =>
-            EditPage(user: userEdit))
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            UpdateSaham(saham: sahamEdit, onPressed: loadUlang),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-   return Scaffold(
+    return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
       ),
       body: FutureBuilder(
-        future  : this.handler.retrieveUsers(),
-        builder : (BuildContext context, AsyncSnapshot<List<User>> snapshot) {
+        future: handler.retrieveSaham(),
+        builder: (BuildContext context, AsyncSnapshot<List<Saham>> snapshot) {
           if (snapshot.hasData) {
             return ListView.builder(
               itemCount: snapshot.data?.length,
@@ -84,33 +104,66 @@ class _MyHomePageState extends State<MyHomePage> {
                   background: Container(
                     color: Colors.red,
                     alignment: Alignment.centerRight,
-                    padding: EdgeInsets.symmetric(horizontal: 10.0),
-                    child: Icon(Icons.delete_forever),
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                    child: const Icon(Icons.delete_forever),
                   ),
-                  key: ValueKey<int>(snapshot.data![index].id!),
-                  child: Column(
-                    children: <Widget>[
-                      Card(
-                          child: ListTile(
-                            contentPadding: EdgeInsets.all(8.0),
-                            title: Text(snapshot.data![index].name),
-                            subtitle: Text(snapshot.data![index].country),
-                            onTap: () => editData(snapshot.data![index]),
-                          )
-                      ),
-                    ],
+                  key: ValueKey<int>(snapshot.data![index].tickerid!),
+                  child: Card(
+                    child: ListTile(
+                        onTap: () => editData(snapshot.data![index]),
+                        contentPadding: const EdgeInsets.all(8.0),
+                        title: Text(snapshot.data![index].ticker,
+                            style: TextStyle(
+                                color: cekChange(snapshot.data![index].change)
+                                    ? Colors.green
+                                    : Colors.red)),
+                        subtitle: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Text("Open: "),
+                                Text(snapshot.data![index].open.toString()),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Text("High: "),
+                                Text(snapshot.data![index].high.toString()),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Text("Last: "),
+                                Text(snapshot.data![index].last.toString()),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Text("Change: "),
+                                Text(snapshot.data![index].change),
+                              ],
+                            ),
+                          ],
+                        )),
                   ),
-                  onDismissed: (DismissDirection direction) async{
-                      await this.handler.deleteUser(snapshot.data![index].id);
-                  },
-
                 );
               },
             );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => TambahSaham(onPressed: loadUlang)),
+          );
+        },
+        tooltip: 'Increment Counter',
+        child: const Icon(Icons.add),
       ),
     );
   }
