@@ -1,71 +1,43 @@
-import 'package:flutter/material.dart';
-import 'models/user.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'models/saham.dart';
 
-class EditPage extends StatelessWidget{
-  final User user;
-  //final String kiriman;
-  EditPage({super.key, required this.user});
+class DatabaseHandler {
+  Future<Database> initializeDB() async {
+    String path = await getDatabasesPath();
+    return openDatabase(
+      join(path, 'example.db'),
+      onCreate: (database, version) async {
+        await database.execute(
+          "CREATE TABLE saham ( tickerid INTEGER PRIMARY KEY AUTOINCREMENT, ticker TEXT NOT NULL, open INTEGER NOT NULL, high INTEGER NOT NULL, last INTEGER NOT NULL, change TEXT )",
+        );
+      },
+      version: 1,
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit data user : ' + user.name),
-      ),
-      body: Container(
-        child:
-        Column(
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  12.0, 12.0, 12.0, 6.0),
-              child: TextFormField(
-                initialValue: user.name,
-                style: TextStyle(
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.normal
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  12.0, 6.0, 12.0, 12.0),
-              child: TextFormField(
-                initialValue: user.country,
-                style: TextStyle(
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.normal
-                ),
+  Future<int> insertSaham(List<Saham> sahams) async {
+    int result = 0;
+    final Database db = await initializeDB();
+    for (var itemSaham in sahams) {
+      result = await db.insert('saham', itemSaham.toMap());
+    }
+    return result;
+  }
 
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  12.0, 6.0, 12.0, 12.0),
-              child: TextFormField(
-                initialValue: user.age.toString(),
-                style: TextStyle(
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.normal
-                ),
+  Future<List<Saham>> retrieveSaham() async {
+    final Database db = await initializeDB();
+    final List<Map<String, Object?>> queryResult = await db.query('saham');
+    return queryResult.map((e) => Saham.fromMap(e)).toList();
+  }
 
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: ElevatedButton(
-                onPressed: () {
-                  // Validate returns true if the form is valid, or false otherwise.
-                },
-                child: const Text('Submit'),
-              ),
-            ),
-          ],
-
-        ),
-      ),
-      //bottomNavigationBar:  BottomNavigationMenu(),
+  Future<int> updateSaham(Saham saham) async {
+    final Database db = await initializeDB();
+    return await db.update(
+      'saham',
+      saham.toMap(),
+      where: 'tickerid = ?',
+      whereArgs: [saham.tickerid],
     );
   }
 }
